@@ -28,9 +28,7 @@ Nesta etapa do projeto, o sistema passou por uma refatoração arquitetural comp
 
 2. **Migração do Frontend para Vue.js 3 (SPA com Vite e Vue Router):**
    * Criação da nova base de código com **Vite** e reorganização do projeto em rotas declarativas (`/` para o mapa principal, `/login` e `/cadastro`) utilizando **Vue Router** com `createWebHashHistory()` para compatibilidade nativa com o GitHub Pages.
-   * Substituição da manipulação imperativa do DOM (`document.getElementById`) por estados reativos (`ref`, `computed`) e ganchos de ciclo de vida (`onMounted`, `onUnmounted`) na *Composition API* do Vue 3.
-   * Gerenciamento do ciclo de vida do botão oficial do Google dentro de `LoginView.vue`, garantindo sua renderização mesmo durante transições de rota sem recarregamento de página.
-   * Integração do **Leaflet.js** ao ciclo de vida do Vue, incluindo a correção de caminhos de ícones estáticos empacotados pelo Vite.
+   * Integração do **Leaflet.js** ao ambiente do Vue, incluindo a correção de caminhos de ícones estáticos empacotados pelo Vite.
    * Decodificação do payload do JWT no cliente para controlar a exibição condicional dos botões **Editar** e **Excluir** nos popups apenas para o criador do ponto ou administradores, espelhando a validação de autorização feita no backend via cabeçalho `Authorization: Bearer <token>`.
    * Separação entre código-fonte do frontend (`src/`) e API (`Backend/`), configurando um novo Web Service no **Render** apontando para a subpasta `Backend` e conectado ao banco **PostgreSQL** hospedado no **Neon.tech**.
    * Atualização da política de **CORS** no Express para autorizar tanto o ambiente local do Vite (`http://localhost:5173`) quanto o domínio de produção.
