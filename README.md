@@ -1,5 +1,7 @@
 # Mapa de Reciclagem
 
+<img src="./site.gif" alt="Visualização do projeto" title="GIF animado do projeto">
+
 ## Acesso
 
 * **Aplicação Web (Frontend):** https://elc1090.github.io/project4-2026b-FabricioDD
@@ -35,59 +37,74 @@ Nesta etapa do projeto, o sistema passou por uma refatoração arquitetural comp
 
 ### Trechos de código
 
-#### 1. Inicialização reativa do Google Identity Services (`src/views/LoginView.vue`)
+#### 1. Validação do Token Google e criação automática de conta (Backend/server.js)
 
-Para evitar falhas quando o usuário navega diretamente para `/#/login` antes do carregamento completo do script externo do Google, o componente utiliza `onMounted` aliado a uma verificação periódica limpa em `onUnmounted`:
+Este trecho mostra o lado do servidor no login federado: o backend recebe o credential enviado pelo Vue, valida a assinatura criptográfica diretamente com os servidores do Google via google-auth-library e cria o usuário no PostgreSQL caso seja seu primeiro acesso, gerando um JWT unificado da aplicação:
 
-```javascript
-async function handleCredentialResponse(response) {
-  mensagemErro.value = ''
-  carregando.value = true
+<code>
+app.post('/api/login/google', async (req, res) => {
+  const { credential } = req.body;
 
   try {
-    const resposta = await fetch(`${API_URL}/api/login/google`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ credential: response.credential })
-    })
+    // 1. Verifica a autenticidade do token emitido pelo Google
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID
+    });
+    const { email, name } = ticket.getPayload();
 
-    const dados = await resposta.json()
+    // 2. Busca o usuário no Neon.tech ou cria automaticamente no primeiro login
+    let resultado = await pool.query('SELECT * FROM usuarios WHERE email = $1', [email]);
+    let usuario = resultado.rows[0];
 
-    if (resposta.ok) {
-      localStorage.setItem('token', dados.token)
-      localStorage.setItem('usuarioNome', dados.usuario.nome)
-      router.push('/')
-    } else {
-      mensagemErro.value = dados.erro || 'Erro ao autenticar com o Google.'
+    if (!usuario) {
+      const novoUsuario = await pool.query(
+        'INSERT INTO usuarios (nome, email, senha) VALUES ($1, $2, $3) RETURNING id, nome, email, is_admin',
+        [name, email, null] // Contas federadas não exigem senha local
+      );
+      usuario = novoUsuario.rows[0];
     }
-  } catch (erro) {
-    mensagemErro.value = 'Erro ao conectar com o servidor.'
-  } finally {
-    carregando.value = false
-  }
-}
 
-function renderizarBotaoGoogle() {
-  if (window.google?.accounts?.id && googleButtonContainer.value) {
-    window.google.accounts.id.initialize({
-      client_id: GOOGLE_CLIENT_ID,
-      callback: handleCredentialResponse
-    })
+    // 3. Emite o JWT padrão da aplicação para manter a sessão unificada
+    const token = jwt.sign(
+      { id: usuario.id, nome: usuario.nome, is_admin: usuario.is_admin },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
 
-    window.google.accounts.id.renderButton(googleButtonContainer.value, {
-      theme: 'outline',
-      size: 'large',
-      width: 280
-    })
-    return true
+    res.json({ token, usuario: { id: usuario.id, nome: usuario.nome } });
+  } catch (err) {
+    res.status(401).json({ erro: 'Falha na validação da conta Google.' });
   }
-  return false
-}
+});
+</code>
+
+#### 2. Roteamento SPA compatível com hospedagem estática (src/router/index.js)
+
+Na migração para o GitHub Pages, o uso de createWebHashHistory() evita erros 404 Not Found quando o usuário recarrega a página diretamente em uma rota interna (como /#/login), pois o servidor estático sempre resolve o index.html raiz:
+
+<code>
+import { createRouter, createWebHashHistory } from 'vue-router'
+import MapaView from '../views/MapaView.vue'
+import LoginView from '../views/LoginView.vue'
+import CadastroView from '../views/CadastroView.vue'
+
+const router = createRouter({
+  history: createWebHashHistory(),
+  routes: [
+    { path: '/', name: 'mapa', component: MapaView },
+    { path: '/login', name: 'login', component: LoginView },
+    { path: '/cadastro', name: 'cadastro', component: CadastroView }
+  ]
+})
+
+export default router
+</code>
 
 ## Tecnologias
 ### Linguagens e afins
 
-    * Frontend: Vue.js 3, Vue Router 4, JavaScript, HTML5, CSS3 e Leaflet.js.
+    * Frontend: Vue.js, Vue Router, JavaScript, HTML5, CSS3 e Leaflet.js.
 
     * Backend: Node.js, Express.js, jsonwebtoken (JWT), bcrypt e google-auth-library.
 
@@ -103,6 +120,8 @@ function renderizarBotaoGoogle() {
 
     * Controle de Versão e Hospedagem: Git, GitHub, GitHub Pages (gh-pages) para o frontend e Render para o backend Node.js.
 
+    * IA utilizada: Gemini.
+
 ## Referências
 
    * Documentação oficial do Vue.js 3: https://vuejs.org/guide/introduction.html
@@ -114,5 +133,3 @@ function renderizarBotaoGoogle() {
    * Documentação oficial do Leaflet.js: https://leafletjs.com/reference.html
 
    * Google Identity Services — Sign In With Google for Web: https://developers.google.com/identity/gsi/web/guides/overview
-
-   * Material de apoio e orientações da disciplina ELC1090 — Desenvolvimento de Software para a Web (UFSM).
