@@ -136,7 +136,7 @@ function renderizarMarcadores(listaPontos) {
     const marcador = usarPontinho
       ? L.circleMarker([ponto.latitude, ponto.longitude], {
           radius: 6,
-          fillColor: '#28a745',
+          fillColor: '#3786c4',
           color: '#ffffff',
           weight: 2,
           opacity: 1,
