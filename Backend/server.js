@@ -12,7 +12,9 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const origensPermitidas = [
     'https://elc1090.github.io', // Domínio do GitHub Pages
     'http://localhost:3000',      // Permite testes locais no Node.js
-    'http://127.0.0.1:5500'       // Permite testes locais via Live Server do VS Code
+    'http://127.0.0.1:5500',       // Permite testes locais via Live Server do VS Code
+    'http://localhost:5173',        // Permite testes locais do vue.js
+    'http://127.0.0.1:5173' 
 ];
 
 app.use(cors({
